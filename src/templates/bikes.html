@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Record Bike Incident</h2>
+    <form method="post" action="{{ url_for('record_bike_incident') }}" onsubmit="return validateBikeForm();">
+        <div class="row">
+            <div>
+                <label for="bike_type">Bike Type *</label>
+                <select id="bike_type" name="bike_type" required>
+                    <option value="">-- Select bike type --</option>
+                    <option value="mubea">Mubea</option>
+                    <option value="citkar">Citkar</option>
+                </select>
+            </div>
+            <div>
+                <label for="bike_serial">Bike Serial Number *</label>
+                <input type="text" id="bike_serial" name="bike_serial" placeholder="Enter bike serial number" required>
+            </div>
+        </div>
+
+        <div class="row">
+            <div>
+                <label for="incident_date">Incident Date *</label>
+                <input type="date" id="incident_date" name="incident_date" value="{{ today }}" required>
+            </div>
+        </div>
+
+        <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 12px;">Bike Issues *</label>
+            <div class="checks">
+                <label>
+                    <input type="checkbox" name="roll_back_on_ramp"> Bike roll back on ramp
+                </label>
+                <label>
+                    <input type="checkbox" name="missing_windscreen"> Missing windscreen
+                </label>
+                <label>
+                    <input type="checkbox" name="faulty_handbrake"> Faulty handbrake
+                </label>
+                <label>
+                    <input type="checkbox" name="faulty_brake"> Faulty brake
+                </label>
+                <label>
+                    <input type="checkbox" name="shutting_off"> Shutting off
+                </label>
+                <label>
+                    <input type="checkbox" name="worn_out_tyres"> Worn out tyres
+                </label>
+            </div>
+        </div>
+
+        <div class="actions" style="margin-top: 16px;">
+            <button type="submit">Record Bike Incident</button>
+            <a href="{{ url_for('index') }}" class="button-link secondary" style="margin-left: 8px;">Back to Incidents</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Download Bike Incidents Report</h2>
+    <p>Export recorded bike incidents to Excel for analysis and record-keeping.</p>
+    <div class="actions" style="margin-top: 12px;">
+        <a href="{{ url_for('export_bike_incidents') }}" class="button-link">Download weekly report (Week {{ current_week.week_number }})</a>
+        <a href="{{ url_for('export_bike_incidents', week_offset=-1) }}" class="button-link">Download past week report</a>
+        <form method="post" action="{{ url_for('bikes') }}" style="display: inline;">
+            <input type="hidden" name="action" value="clear">
+            <button type="submit" style="background: #dc2626;" onclick="return confirm('Are you sure you want to clear all bike incidents for this week? This cannot be undone.');">Clear this week's incidents</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Current Week</h2>
+    <p><strong>Week {{ current_week.week_number }}</strong> ({{ current_week.week_start.strftime('%Y-%m-%d') }} to {{ current_week.week_end.strftime('%Y-%m-%d') }})</p>
+</div>
+
+<script>
+function validateBikeForm() {
+    const bikeType = document.getElementById('bike_type').value.trim();
+    const bikeSerial = document.getElementById('bike_serial').value.trim();
+    const incidentDate = document.getElementById('incident_date').value.trim();
+
+    if (!bikeType) {
+        alert('Please select a bike type');
+        return false;
+    }
+
+    if (!bikeSerial) {
+        alert('Please enter a bike serial number');
+        return false;
+    }
+
+    if (!incidentDate) {
+        alert('Please select an incident date');
+        return false;
+    }
+
+    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    const anyChecked = Array.from(checkboxes).some(cb => cb.checked);
+
+    if (!anyChecked) {
+        alert('Please select at least one bike issue');
+        return false;
+    }
+
+    return true;
+}
+</script>
+
+{% endblock %}

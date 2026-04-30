@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Incident Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f7fb; color: #1f2937; }
+        .container { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+        .nav { display: flex; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #e5e7eb; }
+        .nav a { text-decoration: none; color: #2563eb; font-weight: 600; padding: 6px 12px; border-radius: 6px; }
+        .nav a:hover { background: #dbeafe; }
+        .nav a.active { background: #2563eb; color: #fff; }
+        .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; }
+        h1, h2 { margin-top: 0; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; }
+        input[type="text"], input[type="date"], input[type="file"], select { width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .actions { margin-top: 12px; }
+        button, .button-link { background: #2563eb; color: #fff; border: none; border-radius: 6px; padding: 9px 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+        .button-link.secondary { background: #374151; }
+        .checks label { display: inline-block; margin-right: 18px; font-weight: 500; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { text-align: left; border-bottom: 1px solid #e5e7eb; padding: 8px; }
+        .flash { padding: 10px 12px; border-radius: 6px; margin-bottom: 10px; }
+        .flash.success { background: #ecfdf3; color: #166534; border: 1px solid #bbf7d0; }
+        .flash.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .escalation { color: #991b1b; font-weight: 700; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Incident Tracker</h1>
+    <div class="nav">
+        <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Driver Incidents</a>
+        <a href="{{ url_for('bikes') }}" {% if request.endpoint == 'bikes' %}class="active"{% endif %}>Bike Incidents</a>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+</div>
+</body>
+</html>

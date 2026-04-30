@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card">
+    <h2>Current operational week</h2>
+    <p style="margin:0;">Week {{ current_week.week_number }}</p>
+</div>
+
+<div class="card">
+    <h2>1) Upload current DA list</h2>
+    <form method="post" action="{{ url_for('upload_da_list') }}" enctype="multipart/form-data">
+        <label>
+            Excel or CSV file with columns <strong>Transporter ID</strong> and <strong>Driver Name</strong>
+            <input type="file" name="da_file" accept=".xlsx,.xls,.csv" required>
+        </label>
+        <div class="actions">
+            <button type="submit">Upload DA list</button>
+        </div>
+    </form>
+    <div style="margin-top:10px;">
+        <button id="toggle-add-da" class="button-link">Add single DA</button>
+        <form id="add-da-form" method="post" action="{{ url_for('add_da') }}" style="display:none;margin-top:8px;">
+            <label style="display:block;margin-bottom:6px;">
+                Transporter ID
+                <input type="text" name="new_transport_id" required style="width:100%;box-sizing:border-box;">
+            </label>
+            <label style="display:block;margin-bottom:6px;">
+                Driver Name
+                <input type="text" name="new_driver_name" required style="width:100%;box-sizing:border-box;">
+            </label>
+            <div class="actions">
+                <button type="submit">Add DA</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <h2>2) Record incident</h2>
+    <form method="post" action="{{ url_for('record_incident') }}" id="incident-form">
+        <label>
+            Driver (search by Transporter ID or Name)
+            <div style="position:relative;">
+                <input type="text" id="driver-search" autocomplete="off" placeholder="Type Transporter ID or name..." style="width:100%;box-sizing:border-box;">
+                <ul id="driver-suggestions" style="display:none;position:absolute;z-index:999;background:#fff;border:1px solid #d1d5db;border-radius:6px;margin:0;padding:0;list-style:none;width:100%;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></ul>
+            </div>
+            <input type="hidden" name="transport_id" id="transport_id_hidden">
+        </label>
+
+        <div class="checks" style="margin-top:12px;">
+            <label><input type="checkbox" name="missing_vest"> Missing High Visibility Vest</label>
+            <label><input type="checkbox" name="missing_shoes"> Missing Safety Shoes</label>
+            <label><input type="checkbox" name="no_badge"> Not displaying badge</label>
+            <label><input type="checkbox" name="not_following_yard_marshall_instructions"> Not following Yard Marshall instructions</label>
+            <label><input type="checkbox" name="exceeding_speed_loading_bay"> Exceeding 5mph speed in loading bay</label>
+            <label><input type="checkbox" name="unnecessary_dwell_time"> Unnecessary dwell time</label>
+        </div>
+
+        <label style="margin-top:12px;">
+            Incident Date
+            <input type="date" name="incident_date" value="{{ today }}" required>
+        </label>
+
+        <div class="actions">
+            <button type="submit">Record incident (+1 Non-Compliance)</button>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>3) Escalations (3+ Non-Compliance)</h2>
+    <div class="actions" style="margin-bottom: 12px;">
+        <a class="button-link secondary" href="{{ url_for('export_escalations_csv') }}">Download weekly report (Week {{ current_week.week_number }})</a>
+        <a class="button-link secondary" href="{{ url_for('export_escalations_csv', week_offset=-1) }}">Download past week report</a>
+        <form method="post" action="{{ url_for('clear_week_incidents') }}" style="display:inline;">
+            <button type="submit" class="button-link" style="background-color:#dc2626;color:#fff;" onclick="return confirm('Are you sure you want to clear all incidents for this week? This cannot be undone.')">Clear this week's incidents</button>
+        </form>
+    </div>
+
+    {% if escalations %}
+    <table>
+        <thead>
+            <tr>
+                <th>Transporter ID</th>
+                <th>Driver Name</th>
+                <th>Weekly Non-Compliance Count</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for escalation in escalations %}
+            <tr>
+                <td>{{ escalation.driver.transport_id }}</td>
+                <td>{{ escalation.driver.name }}</td>
+                <td>{{ escalation.weekly_count }}</td>
+                <td class="escalation">User escalation to DSP is required</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No drivers currently at 3 Non-Compliance this week.</p>
+    {% endif %}
+</div>
+
+<script>
+(function () {
+    var allDrivers = [];
+    var searchInput  = document.getElementById('driver-search');
+    var suggestionBox = document.getElementById('driver-suggestions');
+    var hiddenInput  = document.getElementById('transport_id_hidden');
+
+    fetch('/drivers.json')
+        .then(function (r) { return r.json(); })
+        .then(function (data) { allDrivers = data; });
+
+    searchInput.addEventListener('input', function () {
+        var query = this.value.trim().toLowerCase();
+        hiddenInput.value = '';
+        suggestionBox.innerHTML = '';
+
+        if (query.length < 1) { suggestionBox.style.display = 'none'; return; }
+
+        var matches = allDrivers.filter(function (d) {
+            return d.transport_id.toLowerCase().includes(query) ||
+                   d.name.toLowerCase().includes(query);
+        });
+
+        if (matches.length === 0) { suggestionBox.style.display = 'none'; return; }
+
+        matches.forEach(function (d) {
+            var li = document.createElement('li');
+            li.textContent = d.transport_id + ' — ' + d.name;
+            li.style.cssText = 'padding:10px 14px;cursor:pointer;border-bottom:1px solid #f3f4f6;font-size:14px;';
+            li.addEventListener('mousedown', function (e) {
+                e.preventDefault();
+                searchInput.value  = d.transport_id + ' — ' + d.name;
+                hiddenInput.value  = d.transport_id;
+                suggestionBox.style.display = 'none';
+            });
+            li.addEventListener('mouseover', function () { this.style.background = '#eff6ff'; });
+            li.addEventListener('mouseout',  function () { this.style.background = ''; });
+            suggestionBox.appendChild(li);
+        });
+
+        suggestionBox.style.display = 'block';
+    });
+
+    document.addEventListener('click', function (e) {
+        if (!searchInput.contains(e.target)) suggestionBox.style.display = 'none';
+    });
+
+    document.getElementById('incident-form').addEventListener('submit', function (e) {
+        if (!hiddenInput.value) {
+            e.preventDefault();
+            searchInput.style.borderColor = '#dc2626';
+            searchInput.placeholder = 'Please select a driver from the list';
+        }
+    });
+
+    // Toggle add-DA form
+    var toggleAdd = document.getElementById('toggle-add-da');
+    var addForm = document.getElementById('add-da-form');
+    if (toggleAdd && addForm) {
+        toggleAdd.addEventListener('click', function (e) {
+            e.preventDefault();
+            addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+        });
+    }
+})();
+</script>
+{% endblock %}
