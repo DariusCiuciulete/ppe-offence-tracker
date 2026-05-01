@@ -1,28 +1,53 @@
-import pandas as pd
+import csv
+import io
+from openpyxl import load_workbook
 from storage.database import Driver, db
 
 
 def _load_file(file_obj):
+    """Load Excel or CSV file and return list of dictionaries"""
     filename = getattr(file_obj, 'filename', '') or ''
+    
     if filename.lower().endswith('.csv'):
-        return pd.read_csv(file_obj)
-    return pd.read_excel(file_obj)
+        # Handle CSV
+        content = file_obj.read().decode('utf-8')
+        reader = csv.DictReader(io.StringIO(content))
+        return list(reader)
+    else:
+        # Handle Excel
+        wb = load_workbook(file_obj)
+        ws = wb.active
+        
+        # Get headers from first row
+        headers = [cell.value for cell in ws[1]]
+        
+        # Convert to list of dictionaries
+        data = []
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            data.append(dict(zip(headers, row)))
+        return data
 
 
-def _resolve_column(df, accepted_names):
-    for column_name in df.columns:
-        normalized = str(column_name).strip().lower()
-        if normalized in accepted_names:
-            return column_name
+def _resolve_column(data, accepted_names):
+    """Find column name that matches accepted names (case-insensitive)"""
+    if not data:
+        return None
+    
+    first_row = data[0]
+    for column_name in first_row.keys():
+        if column_name:
+            normalized = str(column_name).strip().lower()
+            if normalized in accepted_names:
+                return column_name
     return None
 
 
 def import_excel(file_obj):
     """Import DA list (Excel or CSV) and merge by Transporter ID, preserving existing non-compliance counts."""
-    df = _load_file(file_obj)
+    data = _load_file(file_obj)
 
-    transport_column = _resolve_column(df, {"transporter id"})
-    name_column = _resolve_column(df, {"driver name", "name"})
+    transport_column = _resolve_column(data, {"transporter id"})
+    name_column = _resolve_column(data, {"driver name", "name"})
 
     if not transport_column or not name_column:
         raise ValueError("File must include columns: 'Transporter ID' and 'Driver Name'.")
@@ -31,7 +56,7 @@ def import_excel(file_obj):
     updated = 0
     skipped = 0
 
-    for _, row in df.iterrows():
+    for row in data:
         transport_id = str(row.get(transport_column, "")).strip()
         driver_name = str(row.get(name_column, "")).strip()
 
