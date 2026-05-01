@@ -7,7 +7,10 @@ class NonComplianceManager:
     @staticmethod
     def _find_driver(transporter_id=None, driver_name=None):
         if transporter_id:
-            return Driver.query.filter_by(transport_id=transporter_id.strip()).first(), None
+            driver = Driver.query.filter_by(transport_id=transporter_id.strip()).first()
+            if driver:
+                return driver, None
+            return None, "Driver not found for the selected Transporter ID. Please refresh the DA list."
 
         if driver_name:
             name = driver_name.strip()
@@ -32,8 +35,11 @@ class NonComplianceManager:
         incident_date=None,
     ):
         driver, error = self._find_driver(transporter_id=transporter_id, driver_name=driver_name)
-        if error:
-            return {"ok": False, "message": error}
+        if error or not driver:
+            return {
+                "ok": False,
+                "message": error or "Driver not found. Please refresh DA list and try again.",
+            }
 
         if not any([
             missing_vest,
