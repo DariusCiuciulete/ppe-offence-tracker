@@ -31,9 +31,11 @@ db_url = (os.environ.get('DATABASE_URL') or os.environ.get('DATABASE_UR') or "")
 if not os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_UR'):
     app.logger.warning("DATABASE_UR detected; please rename it to DATABASE_URL in Render.")
 if db_url:
-    # Fix postgres:// → postgresql:// for SQLAlchemy
+    # Normalize to pg8000 driver to avoid psycopg2 binary compatibility issues.
     if db_url.startswith('postgres://'):
-        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+        db_url = db_url.replace('postgres://', 'postgresql+pg8000://', 1)
+    elif db_url.startswith('postgresql://'):
+        db_url = db_url.replace('postgresql://', 'postgresql+pg8000://', 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 else:
     if is_hosted_runtime:
