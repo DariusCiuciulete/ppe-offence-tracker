@@ -506,8 +506,10 @@ def clear_week_bike_incidents():
         return redirect(url_for('bikes'))
 
 
+# Initialize database on startup (runs on both direct execution and gunicorn)
+os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
+init_db(app)
+
 if __name__ == '__main__':
-    os.makedirs(os.path.join(BASE_DIR, "data"), exist_ok=True)
-    init_db(app)
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
