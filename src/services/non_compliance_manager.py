@@ -64,7 +64,14 @@ class NonComplianceManager:
         db.session.add(incident)
 
         driver.non_compliance_count += 1
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return {
+                "ok": False,
+                "message": "Failed to save incident. Please try again.",
+            }
 
         incident_week = get_operational_week(incident_date)
         # determine weekly count for this driver (the week of the incident)

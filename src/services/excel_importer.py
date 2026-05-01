@@ -7,8 +7,12 @@ from storage.database import Driver, db
 def _load_file(file_obj):
     """Load Excel or CSV file and return list of dictionaries"""
     filename = getattr(file_obj, 'filename', '') or ''
+    lower_name = filename.lower()
+
+    if lower_name.endswith('.xls'):
+        raise ValueError("Legacy .xls files are not supported. Please upload .xlsx or .csv.")
     
-    if filename.lower().endswith('.csv'):
+    if lower_name.endswith('.csv'):
         # Handle CSV
         content = file_obj.read().decode('utf-8')
         reader = csv.DictReader(io.StringIO(content))
@@ -76,7 +80,7 @@ def import_excel(file_obj):
     db.session.commit()
 
     return {
-        "total_rows": len(df.index),
+        "total_rows": len(data),
         "added": added,
         "updated": updated,
         "skipped": skipped,

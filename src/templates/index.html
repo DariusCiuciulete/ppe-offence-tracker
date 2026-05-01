@@ -10,8 +10,8 @@
     <h2>1) Upload current DA list</h2>
     <form method="post" action="{{ url_for('upload_da_list') }}" enctype="multipart/form-data">
         <label>
-            Excel or CSV file with columns <strong>Transporter ID</strong> and <strong>Driver Name</strong>
-            <input type="file" name="da_file" accept=".xlsx,.xls,.csv" required>
+            Excel (.xlsx) or CSV file with columns <strong>Transporter ID</strong> and <strong>Driver Name</strong>
+            <input type="file" name="da_file" accept=".xlsx,.csv" required>
         </label>
         <div class="actions">
             <button type="submit">Upload DA list</button>

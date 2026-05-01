@@ -258,6 +258,13 @@ def export_escalations_csv():
             column == True
         ).count()
 
+    def weekly_incident_total(driver_id):
+        return Incident.query.filter(
+            Incident.driver_id == driver_id,
+            Incident.incident_date >= week_start,
+            Incident.incident_date <= week_end,
+        ).count()
+
     wb = Workbook()
     ws = wb.active
     ws.title = f"Week {current_week['week_number']}"
@@ -294,9 +301,7 @@ def export_escalations_csv():
         speed_count = incident_count(driver.id, Incident.exceeding_speed_loading_bay)
         dwell_count = incident_count(driver.id, Incident.unnecessary_dwell_time)
 
-        weekly_total = (
-            vest_count + shoes_count + badge_count + yard_count + speed_count + dwell_count
-        )
+        weekly_total = weekly_incident_total(driver.id)
 
         # Non-Compliance Count cell: append escalation text in the same box when threshold reached
         non_compliance_cell_value = weekly_total
