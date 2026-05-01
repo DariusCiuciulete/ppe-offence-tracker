@@ -1,6 +1,7 @@
 from datetime import datetime
 from io import BytesIO
 import os
+from urllib.parse import urlparse
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for
 from sqlalchemy import text
@@ -81,12 +82,22 @@ def db_status():
         uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
         backend = "sqlite" if uri.startswith("sqlite:///") else "postgresql"
         current_db = None
+        configured_host = None
+        configured_db_name = None
+
+        if uri and not uri.startswith("sqlite:///"):
+            parsed = urlparse(uri)
+            configured_host = parsed.hostname
+            configured_db_name = (parsed.path or "").lstrip("/") or None
+
         if backend == "postgresql":
             current_db = db.session.execute(text("SELECT current_database()")) .scalar()
 
         return jsonify({
             "ok": True,
             "backend": backend,
+            "configured_host": configured_host,
+            "configured_db_name": configured_db_name,
             "current_database": current_db,
             "drivers_count": Driver.query.count(),
             "incidents_count": Incident.query.count(),
