@@ -19,7 +19,14 @@ if not os.path.exists(DB_PATH) and os.path.isdir(DATA_DIR):
     legacy_candidates = [name for name in os.listdir(DATA_DIR) if name.endswith(".db")]
     if legacy_candidates:
         DB_PATH = os.path.join(DATA_DIR, legacy_candidates[0])
-app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
+db_url = os.environ.get('DATABASE_URL')
+if db_url:
+    # Fix postgres:// → postgresql:// for SQLAlchemy
+    if db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    app.config["SQLALCHEMY_DATABASE_URI"] = db_url
+else:
+    app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
 non_compliance_manager = NonComplianceManager()
