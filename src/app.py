@@ -27,7 +27,9 @@ is_hosted_runtime = (
     or bool(os.environ.get("RENDER_SERVICE_ID"))
     or bool(os.environ.get("PORT"))
 )
-db_url = (os.environ.get('DATABASE_URL') or "").strip()
+db_url = (os.environ.get('DATABASE_URL') or os.environ.get('DATABASE_UR') or "").strip()
+if not os.environ.get('DATABASE_URL') and os.environ.get('DATABASE_UR'):
+    app.logger.warning("DATABASE_UR detected; please rename it to DATABASE_URL in Render.")
 if db_url:
     # Fix postgres:// → postgresql:// for SQLAlchemy
     if db_url.startswith('postgres://'):
