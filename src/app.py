@@ -19,15 +19,28 @@ if not os.path.exists(DB_PATH) and os.path.isdir(DATA_DIR):
     legacy_candidates = [name for name in os.listdir(DATA_DIR) if name.endswith(".db")]
     if legacy_candidates:
         DB_PATH = os.path.join(DATA_DIR, legacy_candidates[0])
-db_url = os.environ.get('DATABASE_URL')
+
+is_render_runtime = bool(os.environ.get("RENDER")) or bool(os.environ.get("RENDER_SERVICE_ID"))
+db_url = (os.environ.get('DATABASE_URL') or "").strip()
 if db_url:
     # Fix postgres:// → postgresql:// for SQLAlchemy
     if db_url.startswith('postgres://'):
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 else:
+    if is_render_runtime:
+        raise RuntimeError(
+            "DATABASE_URL is not set in Render environment variables. "
+            "Refusing to fall back to SQLite on ephemeral disk."
+        )
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {"pool_pre_ping": True}
+
+if app.config["SQLALCHEMY_DATABASE_URI"].startswith("sqlite:///"):
+    app.logger.warning("Database backend: sqlite (%s)", DB_PATH)
+else:
+    app.logger.info("Database backend: postgresql (from DATABASE_URL)")
 
 non_compliance_manager = NonComplianceManager()
 
