@@ -3,6 +3,7 @@ from io import BytesIO
 import os
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, send_file, url_for
+from sqlalchemy import text
 
 from services.excel_importer import import_excel
 from services.non_compliance_manager import NonComplianceManager
@@ -20,7 +21,11 @@ if not os.path.exists(DB_PATH) and os.path.isdir(DATA_DIR):
     if legacy_candidates:
         DB_PATH = os.path.join(DATA_DIR, legacy_candidates[0])
 
-is_render_runtime = bool(os.environ.get("RENDER")) or bool(os.environ.get("RENDER_SERVICE_ID"))
+is_hosted_runtime = (
+    bool(os.environ.get("RENDER"))
+    or bool(os.environ.get("RENDER_SERVICE_ID"))
+    or bool(os.environ.get("PORT"))
+)
 db_url = (os.environ.get('DATABASE_URL') or "").strip()
 if db_url:
     # Fix postgres:// → postgresql:// for SQLAlchemy
@@ -28,9 +33,9 @@ if db_url:
         db_url = db_url.replace('postgres://', 'postgresql://', 1)
     app.config["SQLALCHEMY_DATABASE_URI"] = db_url
 else:
-    if is_render_runtime:
+    if is_hosted_runtime:
         raise RuntimeError(
-            "DATABASE_URL is not set in Render environment variables. "
+            "DATABASE_URL is not set in hosted environment variables. "
             "Refusing to fall back to SQLite on ephemeral disk."
         )
     app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{DB_PATH}"
@@ -67,6 +72,29 @@ def drivers_json():
     except Exception:
         app.logger.exception('Failed to load drivers for drivers.json')
         return jsonify([])
+
+
+@app.route('/db-status')
+def db_status():
+    """Runtime DB diagnostics to verify persistence backend and row counts."""
+    try:
+        uri = app.config.get("SQLALCHEMY_DATABASE_URI", "")
+        backend = "sqlite" if uri.startswith("sqlite:///") else "postgresql"
+        current_db = None
+        if backend == "postgresql":
+            current_db = db.session.execute(text("SELECT current_database()")) .scalar()
+
+        return jsonify({
+            "ok": True,
+            "backend": backend,
+            "current_database": current_db,
+            "drivers_count": Driver.query.count(),
+            "incidents_count": Incident.query.count(),
+            "bike_incidents_count": BikeIncident.query.count(),
+        })
+    except Exception as exc:
+        app.logger.exception('Failed to fetch db-status diagnostics')
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 
 @app.route('/upload-da-list', methods=['POST'])
